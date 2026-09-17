@@ -6,19 +6,19 @@ The Azure Functions project root is this repository root. `function_app.py`, `ho
 
 ## Check changes
 
-The GitHub workflow installs the locked dependencies on Python 3.12, runs syntax checks and offline unit tests, and confirms both Azure Functions register using the real SDK packages. Container builds, publishing, and deployments belong to a separate flow and are not defined here yet.
+The GitHub workflow installs the locked application and test dependencies on Python 3.12, runs syntax checks and pytest unit tests, and confirms both Azure Functions register using the real SDK packages. Container builds, publishing, and deployments belong to a separate flow and are not defined here yet.
 
 Run the checks locally with Python 3.12:
 
 ```bash
 poetry check --lock
-poetry install --only main --no-root
+poetry install --with dev --no-root
 poetry run python -m compileall -q function_app.py bug_report_message.py healthcheck_message.py lib tests
-poetry run python -m unittest discover -s tests -p 'test_*.py' -v
+poetry run python -m pytest -q
 poetry run python -c 'import function_app; print([fn.get_function_name() for fn in function_app.app.get_functions()])'
 ```
 
-The offline tests stub Azure SDK calls. They check message normalization, template dispatch, and health/error handling; they do not exercise live Azure permissions or the resulting access policies. The older tests under the original monorepo's `ResourceProvisioner/test/ResourceProvisioner_PyFunctions_Tests` call live Azure services and have not been moved into this CI suite.
+The unit tests import the real application and use temporary patches for the specific synchronization and message-sending calls that would reach Azure. They check message normalization, template dispatch, and health/error handling; they do not exercise live Azure permissions or the resulting access policies. The older tests under the original monorepo's `ResourceProvisioner/test/ResourceProvisioner_PyFunctions_Tests` call live Azure services and have not been moved into this CI suite.
 
 ## Runtime contracts
 
