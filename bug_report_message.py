@@ -1,8 +1,27 @@
-import json
 import datetime
+import json
+
 
 class BugReportMessage:
-    def __init__(self, UserName, UserEmail, UserOrganization, PortalLanguage, PreferredLanguage, Timezone, Workspaces, Topics, URL, UserAgent, Resolution, LocalStorage, BugReportType, Description):
+    # Fields and constructor keywords match the existing Service Bus message schema.
+    # pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        UserName,
+        UserEmail,
+        UserOrganization,
+        PortalLanguage,
+        PreferredLanguage,
+        Timezone,
+        Workspaces,
+        Topics,
+        URL,
+        UserAgent,
+        Resolution,
+        LocalStorage,
+        BugReportType,
+        Description,
+    ):
         self.UserName = UserName
         self.UserEmail = UserEmail
         self.UserOrganization = UserOrganization
@@ -21,7 +40,10 @@ class BugReportMessage:
     def to_json(self):
         def json_default(value):
             if isinstance(value, datetime.date):
-                return dict(year=value.year, month=value.month, day=value.day)
-            else:
-                return value.__dict__
+                return {"year": value.year, "month": value.month, "day": value.day}
+            return value.__dict__
+
         return json.dumps(self, default=json_default, sort_keys=True, indent=4)
+
+
+# pylint: enable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-positional-arguments

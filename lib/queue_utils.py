@@ -1,8 +1,11 @@
-import uuid
-import json
 import datetime
+import json
+import uuid
+
 
 class MassTransitMessage:
+    # The property names follow the MassTransit wire format.
+    # pylint: disable=invalid-name
 
     TYPE_BUG_REPORT = "BugReportMessage"
     TYPE_HEALTH_CHECK_RESULT = "InfrastructureHealthCheckResultMessage"
@@ -11,7 +14,7 @@ class MassTransitMessage:
         return f"sb://{client_namespace}/{queue_name}"
 
     def __generate_src_addr(self):
-        # TODO make a more legit version of this
+        # TODO: Provide the actual source address when available.  # pylint: disable=fixme
         return "n/a"
 
     def __init__(self, message, client_namespace, queue_name, message_type):
@@ -19,18 +22,23 @@ class MassTransitMessage:
         self.messageId = my_id
         self.conversationId = my_id
         self.sourceAddress = self.__generate_src_addr()
-        self.destinationAddress = self.__generate_dest_addr(client_namespace, queue_name)
+        self.destinationAddress = self.__generate_dest_addr(
+            client_namespace, queue_name
+        )
         self.message = message
         self.messageType = [
             f"urn:message:Datahub.Infrastructure.Queues.Messages:{message_type}",
             "urn:message:MediatR:IRequest",
-            "urn:message:MediatR:IBaseRequest"
+            "urn:message:MediatR:IBaseRequest",
         ]
 
     def to_json(self):
         def json_default(value):
             if isinstance(value, datetime.date):
                 return value.isoformat()
-            else:
-                return value.__dict__
+            return value.__dict__
+
         return json.dumps(self, default=json_default, sort_keys=True, indent=4)
+
+
+# pylint: enable=invalid-name
