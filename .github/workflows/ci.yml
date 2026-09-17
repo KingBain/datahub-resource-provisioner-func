@@ -27,7 +27,7 @@ jobs:
         run: PYTHONPATH=app poetry run python -m pytest -q app/tests
       - name: Verify Function registration with real dependencies
         run: |
-          poetry run python - <<'PY'
+          PYTHONPATH=app poetry run python - <<'PY'
           import function_app
           names = {fn.get_function_name() for fn in function_app.app.get_functions()}
           assert names == {
