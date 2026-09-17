@@ -1,8 +1,7 @@
 import logging
-import os
 import uuid
 
-from azure.identity import ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.authorization import AuthorizationManagementClient
 from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
 
@@ -181,7 +180,7 @@ def check_blob_reader_role(
 
 
 def get_authorization_client(
-    subscription_id, tenant_id
+    subscription_id, credential=None
 ) -> AuthorizationManagementClient:
     """
     Retrieves an Authorization Management client for the specified environment and workspace definition.
@@ -194,11 +193,7 @@ def get_authorization_client(
         auth_client: The Authorization Management client object.
 
     """
-    credential = ClientSecretCredential(
-        tenant_id=tenant_id,
-        client_id=os.environ["AzureClientId"],
-        client_secret=os.environ["AzureClientSecret"],
-    )
+    credential = credential or DefaultAzureCredential()
 
     auth_client = AuthorizationManagementClient(
         credential=credential, subscription_id=subscription_id

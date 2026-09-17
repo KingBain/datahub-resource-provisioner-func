@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+from typing import Any
 
 import azure.functions as func
 from azure import servicebus
+from azure.identity import DefaultAzureCredential
 
 import bug_report_message as brm
 import healthcheck_message as hcm
@@ -27,16 +29,13 @@ for logger_name in (
 ):
     logging.getLogger(logger_name).setLevel(logging.WARNING)
 
-# from lib.databricks_utils import get_workspace_client, remove_deleted_users_in_workspace, synchronize_workspace_users
-# from azure.servicebus import ServiceBusClient, ServiceBusMessage
-
 ERROR_DETAILS_JOINER = "; "
 PYTHON_WORKSPACE_SYNC_ERROR_CODE = 7023
 
 app = func.FunctionApp()
 
 
-def get_config():
+def get_config() -> tuple[str | None, str, str]:
     """Retrieve the Azure Service Bus configuration values from the environment.
 
     Returns:
@@ -58,7 +57,7 @@ def get_sync_func_mappings():
         dict: A dictionary mapping template names to their display label and sync handler.
     """
 
-    def sync_new_project_template(workspace_definition):
+    def sync_new_project_template(workspace_definition: dict[str, Any]) -> None:
         sync_keyvault_workspace_users_function(workspace_definition)
         sync_storage_workspace_users_function(workspace_definition)
 
@@ -108,7 +107,7 @@ def http_sync_workspace_users_function(req: func.HttpRequest) -> func.HttpRespon
 @app.service_bus_queue_trigger(
     arg_name="msg", queue_name="user-run-request", connection="DatahubServiceBus"
 )  # Queue Trigger
-def queue_sync_workspace_users_function(msg: func.ServiceBusMessage):
+def queue_sync_workspace_users_function(msg: func.ServiceBusMessage) -> None:
     """
     Synchronizes the users in the Databricks workspace with the users in the definition file.
 
@@ -167,7 +166,7 @@ def send_exception_to_service_bus(exception_message):
         mtm_json = mass_transit_msg.to_json()
         q_message = servicebus.ServiceBusMessage(mtm_json)
         sender.send_messages(q_message)
-        print(f"Sent message to queue: {queue_name}")
+        logger.info("Sent message to queue: %s", queue_name)
 
 
 def send_healthcheck_to_service_bus(message):
@@ -192,12 +191,12 @@ def send_healthcheck_to_service_bus(message):
                 mtm_json, message_id=mass_transit_msg.messageId
             )
             sender.send_messages(q_message)
-            print(f"Sent message to queue: {check_results_queue_name}")
+            logger.info("Sent message to queue: %s", check_results_queue_name)
     except Exception:  # pylint: disable=broad-exception-caught
         logger.exception("An error occurred while sending health check to service bus")
 
 
-def keys_upper(dictionary):
+def keys_upper(dictionary: dict[str, Any]) -> dict[str, Any]:
     """
     Converts the key's first letter in the dictionary to uppercase.
 
@@ -208,9 +207,9 @@ def keys_upper(dictionary):
         dict: The dictionary with uppercase first letter keys.
 
     """
-    res = {}
+    res: dict[str, Any] = {}
     for key in dictionary.keys():
-        value = dictionary[key]
+        value: Any = dictionary[key]
         uppercase_key = key[0].upper() + key[1:]
 
         if isinstance(value, dict):
@@ -226,7 +225,7 @@ def keys_upper(dictionary):
     return res
 
 
-def new_sync_workspace(workspace_definition):
+def new_sync_workspace(workspace_definition: dict[str, Any]) -> None:
     """Synchronize workspace users for the provided workspace definition.
 
     Args:
@@ -294,7 +293,9 @@ def new_sync_workspace(workspace_definition):
         raise RuntimeError(overall_sync_error)
 
 
-def sync_databricks_workspace_users_function(workspace_definition):
+def sync_databricks_workspace_users_function(
+    workspace_definition: dict[str, Any],
+) -> None:
     """
     Synchronizes the users in the Databricks workspace with the users in the definition file.
 
@@ -318,12 +319,12 @@ def sync_databricks_workspace_users_function(workspace_definition):
     dtb_utils.synchronize_workspace_secret_scopes(
         environment_name, subscription_id, workspace_definition, workspace_client
     )
-    # dtb_utils.synchronize_workspace_secrets(environment_name, subscription_id, workspace_definition, workspace_client)
-
     # TODO: send a DatabricksSync (type 9) health check result to the queue  # pylint: disable=fixme
 
 
-def sync_keyvault_workspace_users_function(workspace_definition):
+def sync_keyvault_workspace_users_function(
+    workspace_definition: dict[str, Any],
+) -> None:
     """
     Synchronizes the users in the keyvault with the users in the definition file.
 
@@ -337,19 +338,17 @@ def sync_keyvault_workspace_users_function(workspace_definition):
     # get environment name from environment variables
     environment_name = os.environ["DataHub_ENVNAME"]
     subscription_id = os.environ["AzureSubscriptionId"]
-    tenant_id = os.environ["AzureTenantId"]
+    tenant_id = os.environ["AZURE_TENANT_ID"]
 
-    kv_client = azkv_utils.get_keyvault_client(subscription_id, tenant_id)
+    kv_client = azkv_utils.get_keyvault_client(
+        subscription_id, DefaultAzureCredential()
+    )
     azkv_utils.synchronize_access_policies(
         kv_client, environment_name, workspace_definition, tenant_id
     )
 
-    # Cleanup users in workspace that aren't in AAD Graph
-    # remove_deleted_users_in_workspace(workspace_client)
-    # synchronize_workspace_users(workspace_definition, workspace_client)
 
-
-def sync_storage_workspace_users_function(workspace_definition):
+def sync_storage_workspace_users_function(workspace_definition: dict[str, Any]) -> None:
     """
     Synchronizes the users in the storage account with the users in the definition file.
 
@@ -363,9 +362,9 @@ def sync_storage_workspace_users_function(workspace_definition):
     # get environment name from environment variables
     environment_name = os.environ["DataHub_ENVNAME"]
     subscription_id = os.environ["AzureSubscriptionId"]
-    tenant_id = os.environ["AzureTenantId"]
-
-    sg_client = azsg_utils.get_authorization_client(subscription_id, tenant_id)
+    sg_client = azsg_utils.get_authorization_client(
+        subscription_id, DefaultAzureCredential()
+    )
     blob_containers = ["users", "shared", "datahub"]
     azsg_utils.synchronize_access_policies(
         sg_client,
@@ -374,7 +373,3 @@ def sync_storage_workspace_users_function(workspace_definition):
         workspace_definition,
         blob_containers,
     )
-
-    # Cleanup users in workspace that aren't in AAD Graph
-    # remove_deleted_users_in_workspace(workspace_client)
-    # synchronize_workspace_users(workspace_definition, workspace_client)
