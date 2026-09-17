@@ -1,0 +1,44 @@
+name: Python checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install project dependencies
+        run: |
+          python -m pip install poetry==2.4.3
+          poetry check --lock
+          poetry install --only main --no-root
+      - name: Compile Python source
+        run: poetry run python -m compileall -q function_app.py bug_report_message.py healthcheck_message.py lib tests
+      - name: Run offline unit tests
+        run: poetry run python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Verify Function registration with real dependencies
+        run: |
+          poetry run python - <<'PY'
+          import function_app
+          names = {fn.get_function_name() for fn in function_app.app.get_functions()}
+          assert names == {
+              'SynchronizeWorkspaceUsersHttpTrigger',
+              'SynchronizeWorkspaceUsersQueueTrigger',
+          }, names
+          PY
+
+  dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check Dockerfile without building an image
+        run: docker buildx build --check .
