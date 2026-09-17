@@ -41,10 +41,12 @@ def test_queue_message_is_normalized_and_dispatched(monkeypatch):
     app.queue_sync_workspace_users_function.build().get_user_function()(message)
 
     # Assert
-    sync_workspace.assert_called_once_with({
-        "Workspace": {"Acronym": "demo", "Users": [{"ObjectId": "123"}]},
-        "Templates": [{"Name": "azure-storage-blob"}],
-    })
+    sync_workspace.assert_called_once_with(
+        {
+            "Workspace": {"Acronym": "demo", "Users": [{"ObjectId": "123"}]},
+            "Templates": [{"Name": "azure-storage-blob"}],
+        }
+    )
 
 
 def test_template_sync_emits_healthy_result(monkeypatch):
@@ -97,11 +99,15 @@ def test_template_failure_reports_error_and_unhealthy_result(monkeypatch):
     monkeypatch.setattr(app, "send_healthcheck_to_service_bus", send_health)
 
     # Act
-    with pytest.raises(RuntimeError, match="Workspace demo had problems while synchronizing"):
+    with pytest.raises(
+        RuntimeError, match="Workspace demo had problems while synchronizing"
+    ):
         app.new_sync_workspace(definition)
 
     # Assert
-    send_error.assert_called_once_with("Error synchronizing storage account policies for demo")
+    send_error.assert_called_once_with(
+        "Error synchronizing storage account policies for demo"
+    )
     send_health.assert_called_once()
     result = send_health.call_args.args[0]
     assert isinstance(result, HealthcheckMessage)
