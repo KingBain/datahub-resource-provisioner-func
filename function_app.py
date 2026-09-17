@@ -143,7 +143,7 @@ def send_exception_to_service_bus(exception_message):
         PreferredLanguage="",
         Timezone="",
         Workspaces="",
-        Topics="Workspace Syncronization",
+        Topics="Workspace Synchronization",
         URL="",
         UserAgent="",
         Resolution="",

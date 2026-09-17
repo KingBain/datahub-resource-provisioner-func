@@ -25,6 +25,12 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+ignore_missing_imports = true
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

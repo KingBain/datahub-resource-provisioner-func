@@ -115,9 +115,8 @@ def get_blob_container_names(definition_json):
     return sorted(names)
 
 
-def _collect_container_names(
-    source, names, include_name_field=False
-):  # pylint: disable=too-many-branches
+# pylint: disable=too-many-branches
+def _collect_container_names(source, names, include_name_field=False):
     """Recursively collect container names from nested definition data structures."""
     if source is None:
         return
@@ -152,6 +151,7 @@ def _collect_container_names(
                 names.add(value)
 
 
+# pylint: enable=too-many-branches
 def get_blob_container_scopes(
     subscription_id, resource_group_name, storage_account_name, blob_containers
 ):

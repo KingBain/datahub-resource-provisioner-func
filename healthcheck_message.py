@@ -1,10 +1,10 @@
-import json
 import datetime
+import json
 
 
 class HealthcheckMessage:
     # Serialized property names and constructor names are part of the message contract.
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-positional-arguments
     # 5 = Undefined; 2 - Healthy; 4 - Unhealthy
     STATUS_HEALTHY = 2
     STATUS_UNHEALTHY = 4
@@ -30,4 +30,4 @@ class HealthcheckMessage:
         return json.dumps(self, default=json_default, sort_keys=True, indent=4)
 
 
-# pylint: enable=invalid-name
+# pylint: enable=invalid-name,too-many-positional-arguments
