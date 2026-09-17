@@ -22,7 +22,7 @@ jobs:
           poetry check --lock
           poetry install --with dev --no-root
       - name: Compile Python source
-        run: poetry run python -m compileall -q function_app.py bug_report_message.py healthcheck_message.py lib tests
+        run: poetry run python -m compileall -q app/function_app.py app/bug_report_message.py app/healthcheck_message.py app/lib app/tests
       - name: Run unit tests
         run: poetry run python -m pytest -q
       - name: Verify Function registration with real dependencies
