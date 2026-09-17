@@ -1,13 +1,15 @@
-import os
+import logging
 
-from azure.identity import ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.keyvault import KeyVaultManagementClient
 from azure.mgmt.keyvault.models import AccessPolicyEntry
 
 from lib import constants
 
+logger = logging.getLogger(__name__)
 
-def get_keyvault_client(subscription_id, tenant_id) -> KeyVaultManagementClient:
+
+def get_keyvault_client(subscription_id, credential=None) -> KeyVaultManagementClient:
     """
     Retrieves a Key Vault client for the specified environment and workspace definition.
 
@@ -19,11 +21,7 @@ def get_keyvault_client(subscription_id, tenant_id) -> KeyVaultManagementClient:
         keyvault_client: The Key Vault client object.
 
     """
-    credential = ClientSecretCredential(
-        tenant_id=tenant_id,
-        client_id=os.environ["AzureClientId"],
-        client_secret=os.environ["AzureClientSecret"],
-    )
+    credential = credential or DefaultAzureCredential()
 
     kv_client = KeyVaultManagementClient(
         credential=credential, subscription_id=subscription_id
@@ -39,7 +37,7 @@ def get_keyvault_uri(keyvault_name):
 
 def list_secrets(client: KeyVaultManagementClient, environment_name, definition_json):
     rg_name, vault_name = get_kv_reference(environment_name, definition_json)
-    print(f"using vault: [{rg_name}].[{vault_name}]")
+    logger.info("Using vault: [%s].[%s]", rg_name, vault_name)
 
     # Keep the vault lookup before listing secrets, as in the existing flow.
     client.vaults.get(rg_name, vault_name)
@@ -52,10 +50,7 @@ def synchronize_access_policies(
     client: KeyVaultManagementClient, environment_name, definition_json, tenant_id
 ):
     rg_name, vault_name = get_kv_reference(environment_name, definition_json)
-    print(f"using vault: [{rg_name}].[{vault_name}]")
-    # Replace these values with your Azure Key Vault details
-
-    # Create a SecretClient using the default Azure credential from Azure Identity
+    logger.info("Using vault: [%s].[%s]", rg_name, vault_name)
 
     # Get access policies
     vault = client.vaults.get(rg_name, vault_name)
@@ -68,11 +63,9 @@ def synchronize_access_policies(
         if user["Role"] != "Removed"
     ):
         user_id = user["ObjectId"]
-        # Define the access policy
         permissions = ["list", "get"]
         if user["Role"] == "Admin" or user["Role"] == "Owner":
             permissions = ["list", "get", "delete", "set"]
-        # check if user exists in access policies
         user_exists = False
         valid_permissions = False
         existing_policy = None
@@ -87,30 +80,20 @@ def synchronize_access_policies(
                 if set(policy.permissions.secrets) == set(permissions):
                     valid_permissions = True
                 break
-        # if user does not exist, add user to access policies
         if not user_exists:
-            print(f"adding user {user_id} to access policies")
-            # add user to access policies
-            # vault = clients.kv_client.vaults.get(rg_name, vault_name)
-            # print(f"User {user} has permissions: {policy.permissions}")
-            # print(policy)
-            # enable secret list,get,delete,set,update permissions for user
+            logger.info("Adding user %s to access policies", user_id)
             current_policies.append(access_policy)
         elif not valid_permissions:
-            print(f"updating permissions for user {user_id} in access policies")
-            # update permissions for user
+            logger.info("Updating permissions for user %s in access policies", user_id)
             current_policies.remove(existing_policy)
             current_policies.append(access_policy)
 
         else:
-            print(
-                f"user {user['ObjectId']} already exists in access policies"
-                f" - permissions are valid: {valid_permissions}"
+            logger.info(
+                "User %s already exists in access policies - permissions are valid: %s",
+                user["ObjectId"],
+                valid_permissions,
             )
-    # collect all the object ids
-    # object_ids = [policy.object_id for policy in vault.properties.access_policies]
-    # output = asyncio.run(collect_ms_graph_properties(clients,object_ids))
-    # Print access policies
     removed_users = [
         user
         for user in definition_json["Workspace"]["Users"]
@@ -118,12 +101,8 @@ def synchronize_access_policies(
     ]
     for policy in vault.properties.access_policies:
         if policy.object_id in (user["ObjectId"] for user in removed_users):
-            print(f"removing user {policy.object_id} from access policies")
+            logger.info("Removing user %s from access policies", policy.object_id)
             current_policies.remove(policy)
-            # vault = clients.kv_client.vaults.get(rg_name, vault_name)
-            #
-        # print(f"User {user} has permissions: {policy.permissions}")
-        # print(policy)
     # Update the vault with the new policies
     vault.properties.access_policies = current_policies
     keyvault_poller = client.vaults.begin_create_or_update(rg_name, vault_name, vault)

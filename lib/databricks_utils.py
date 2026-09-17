@@ -1,6 +1,6 @@
 import logging
-import os
 
+from azure.identity import DefaultAzureCredential
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.iam import ComplexValue
 from databricks.sdk.service.workspace import (
@@ -42,9 +42,6 @@ def get_workspace_client(databricks_host):
 
     w = WorkspaceClient(
         host=databricks_host,
-        azure_client_secret=os.environ["AzureClientSecret"],
-        azure_client_id=os.environ["AzureClientId"],
-        azure_tenant_id=os.environ["AzureTenantId"],
         auth_type="azure-client-secret",
     )
     return w
@@ -107,8 +104,9 @@ def remove_deleted_users_in_workspace(definition_json, workspace_client):
 def synchronize_workspace_secrets(
     environment_name, subscription_id, definition_json, workspace_client
 ):
-    azure_tenant_id = os.environ["AzureTenantId"]
-    kv_client = azkv_utils.get_keyvault_client(subscription_id, azure_tenant_id)
+    kv_client = azkv_utils.get_keyvault_client(
+        subscription_id, DefaultAzureCredential()
+    )
     secret_list = azkv_utils.list_secrets(kv_client, environment_name, definition_json)
     for secret in secret_list:
         logging.info("adding secret: %s to workspace", secret.name)
@@ -144,10 +142,7 @@ def synchronize_workspace_secret_scopes(
         f"/providers/Microsoft.KeyVault/vaults/{vault_name.lower()}"
     )
     workspace_secret_scopes = workspace_client.secrets.list_scopes()
-    # for workspace_secret_scope in workspace_secret_scopes:
-    #     logging.info(f"Deleting secret scope {workspace_secret_scope.name}")
-    #     workspace_client.secrets.delete_scope(scope=workspace_secret_scope.name)
-    # Check if WORKSPACE_KV_SCOPE_NAME exists
+    # Check if WORKSPACE_KV_SCOPE_NAME exists.
     workspace_kv_scope_found = False
     for workspace_secret_scope in workspace_secret_scopes:
         if workspace_secret_scope.name == WORKSPACE_KV_SCOPE_NAME:
