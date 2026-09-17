@@ -3,10 +3,36 @@
 import json
 from unittest.mock import Mock, call
 
+import azure.functions as func
 import pytest
 
 import function_app as app
 from healthcheck_message import HealthcheckMessage
+
+
+def test_http_request_dispatches_definition_and_returns_success(monkeypatch):
+    # Arrange
+    definition = {"Workspace": {"Acronym": "demo"}, "Templates": []}
+    request = func.HttpRequest(
+        method="POST",
+        url="http://localhost/api/sync-workspace-users",
+        body=json.dumps(definition).encode("utf-8"),
+    )
+    sync_workspace = Mock()
+    monkeypatch.setattr(app, "new_sync_workspace", sync_workspace)
+
+    # Act
+    response = app.http_sync_workspace_users_function.build().get_user_function()(
+        request
+    )
+
+    # Assert
+    sync_workspace.assert_called_once_with(definition)
+    assert response.status_code == 200
+    assert (
+        response.get_body().decode("utf-8")
+        == "Successfully synchronized workspace users for demo."
+    )
 
 
 def test_new_project_template_syncs_keyvault_then_storage(monkeypatch):
