@@ -1,12 +1,12 @@
-# Datahub User Provisioner
+# Datahub Resource Provisioner Functions (Python)
 
 Python Azure Functions that synchronize workspace users in Databricks, Azure Key Vault, and Azure Storage. This standalone project was extracted from `ssc-sp/datahub-portal` at `develop` commit `469859be137c2b31c958265954b9370552c33e48`.
 
-The Azure Functions project root is this repository root. `function_app.py`, `host.json`, `lib/`, the dependency files, and `Dockerfile` are all here; no .NET project or files from the original monorepo are required to import the application code or provide its Docker build context.
+The Azure Functions project root is this repository root. `function_app.py`, `host.json`, `lib/`, and the dependency files are all here; no .NET project or files from the original monorepo are required to import the application code.
 
 ## Check changes
 
-The GitHub workflow installs the locked dependencies on Python 3.12, runs syntax checks and offline unit tests, and confirms both Azure Functions register using the real SDK packages. Its Dockerfile job runs `docker buildx build --check .`, which checks the build definition without executing the build or producing an image. Image builds, publishing, and deployments belong to a separate flow.
+The GitHub workflow installs the locked dependencies on Python 3.12, runs syntax checks and offline unit tests, and confirms both Azure Functions register using the real SDK packages. Container builds, publishing, and deployments belong to a separate flow and are not defined here yet.
 
 Run the checks locally with Python 3.12:
 
@@ -29,4 +29,4 @@ The offline tests stub Azure SDK calls. They check message normalization, templa
 
 For local use, install Python 3.12, Poetry, Azure Functions Core Tools 4, and a local Azure Storage emulator if you use `UseDevelopmentStorage=true`. Install dependencies with `poetry install`, then run `poetry run func start --python` from the repository root. Configure the Function host using `local.settings.json` (ignored by Git) or environment variables. Required settings for the full synchronization path are `FUNCTIONS_WORKER_RUNTIME=python`, `AzureWebJobsStorage`, `DatahubServiceBus`, `DataHub_ENVNAME`, `AzureSubscriptionId`, `AzureTenantId`, `AzureClientId`, and `AzureClientSecret`. Supply them through your existing environment's secret management; do not commit them.
 
-`pyproject.toml` and `poetry.lock` are used by the Dockerfile. `requirements.txt` is retained for compatibility with the original Azure Functions project, but the image build does not install from it; keep the two declarations aligned until a single dependency format is chosen. The Dockerfile expects this repository root as its build context. The external image flow can use it directly without checking out the original monorepo.
+`pyproject.toml` and `poetry.lock` define the locked Python environment. `requirements.txt` is retained for compatibility with the original Azure Functions project; keep the two declarations aligned until a single dependency format is chosen. A future external image flow can use this repository as its build context without checking out the original monorepo.
